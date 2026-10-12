@@ -89,7 +89,8 @@ namespace ProjectHub.AddIn
                         Tabs[0].Groups.Count > 0)
                     {
                         Tabs[0].Groups[0].Label =
-                            "Project Operations";
+                            "Build " +
+                            GetBuildVersion();
                     }
                 }
 
@@ -725,6 +726,26 @@ namespace ProjectHub.AddIn
         // =========================================================
         // RESOURCES
         // =========================================================
+
+        private static string GetBuildVersion()
+        {
+            try
+            {
+                Version version =
+                    typeof(ProjectHubRibbon)
+                        .Assembly
+                        .GetName()
+                        .Version;
+
+                return version != null
+                    ? version.ToString()
+                    : "unknown";
+            }
+            catch
+            {
+                return "unknown";
+            }
+        }
 
         private static Image LoadImageResource(
             string name)
