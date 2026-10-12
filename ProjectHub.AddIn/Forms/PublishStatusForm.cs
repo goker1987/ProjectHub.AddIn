@@ -13,6 +13,7 @@ namespace ProjectHub.AddIn.Forms
 
         private Label lblTitle;
         private Label lblStatus;
+        private Label lblBuildInfo;
 
         private Panel statusPanel;
         private ProgressBar progressBar;
@@ -302,6 +303,37 @@ namespace ProjectHub.AddIn.Forms
 
             Controls.Add(
                 picCompanyLogo);
+
+            lblBuildInfo =
+                new Label
+                {
+                    Text =
+                        "Build " +
+                        GetBuildVersion(),
+
+                    Left = 225,
+                    Top = 411,
+
+                    Width = 130,
+                    Height = 18,
+
+                    TextAlign =
+                        ContentAlignment.MiddleLeft,
+
+                    ForeColor =
+                        Color.FromArgb(
+                            96,
+                            94,
+                            92),
+
+                    Font =
+                        new Font(
+                            "Segoe UI",
+                            8F)
+                };
+
+            Controls.Add(
+                lblBuildInfo);
 
             btnReverify =
                 new Button
@@ -925,6 +957,26 @@ namespace ProjectHub.AddIn.Forms
             }
 
             action();
+        }
+
+        private static string GetBuildVersion()
+        {
+            try
+            {
+                Version version =
+                    typeof(PublishStatusForm)
+                        .Assembly
+                        .GetName()
+                        .Version;
+
+                return version != null
+                    ? version.ToString()
+                    : "unknown";
+            }
+            catch
+            {
+                return "unknown";
+            }
         }
 
         private static Image LoadImageResource(
