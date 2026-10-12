@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ProjectHub.AddIn/ProjectHub.AddIn.csproj" Id="17eec417-e869-40d6-9ba8-2dd7426c991e" />
+  <Project Path="ProjectHub.Setup/ProjectHub.Setup.vdproj" Type="Installer">
+    <Build />
+  </Project>
+</Solution>
