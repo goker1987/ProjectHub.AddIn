@@ -14,6 +14,7 @@ namespace ProjectHub.AddIn.Forms
 
         private Label lblProjectCount;
         private Label lblConnectionState;
+        private Label lblBuildInfo;
 
         private PictureBox picProductLogo;
         private PictureBox picCompanyLogo;
@@ -427,6 +428,34 @@ namespace ProjectHub.AddIn.Forms
 
             Controls.Add(
                 lblProjectCount);
+
+            lblBuildInfo =
+                new Label
+                {
+                    Text =
+                        "Build " +
+                        GetBuildVersion(),
+
+                    Left = 255,
+                    Top = 444,
+
+                    Width = 190,
+                    Height = 18,
+
+                    TextAlign =
+                        ContentAlignment.MiddleLeft,
+
+                    ForeColor =
+                        TextSecondary,
+
+                    Font =
+                        new Font(
+                            "Segoe UI",
+                            8F)
+                };
+
+            Controls.Add(
+                lblBuildInfo);
 
             btnOpen.Text =
                 "Open";
@@ -1035,6 +1064,26 @@ namespace ProjectHub.AddIn.Forms
         // =========================================================
         // RESOURCES
         // =========================================================
+
+        private static string GetBuildVersion()
+        {
+            try
+            {
+                Version version =
+                    typeof(ConnectForm)
+                        .Assembly
+                        .GetName()
+                        .Version;
+
+                return version != null
+                    ? version.ToString()
+                    : "unknown";
+            }
+            catch
+            {
+                return "unknown";
+            }
+        }
 
         private static Image LoadImageResource(
             string name)
