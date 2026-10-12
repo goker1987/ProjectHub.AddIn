@@ -52,7 +52,7 @@
             // 
             this.grpProject.Items.Add(this.btnConnect);
             this.grpProject.Items.Add(this.btnPublish);
-            this.grpProject.Label = "Project Operations | Dynamics 365";
+            this.grpProject.Label = "Build";
             this.grpProject.Name = "grpProject";
             // 
             // btnConnect
