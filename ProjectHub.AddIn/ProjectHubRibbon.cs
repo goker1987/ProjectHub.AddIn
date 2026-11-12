@@ -706,7 +706,17 @@ namespace ProjectHub.AddIn
                 result.UpdatedTasks +
                 " updated, " +
                 result.DeletedTasks +
-                " deleted" +
+                " deleted, " +
+                result.SkippedTaskDeletes +
+                " protected/skipped" +
+                (
+                    result.SkippedTaskDeletes > 0 &&
+                    !string.IsNullOrWhiteSpace(
+                        result.SkippedTaskDeleteDetails)
+                        ? "\r\n" +
+                          result.SkippedTaskDeleteDetails
+                        : ""
+                ) +
                 "\r\n" +
 
                 "Predecessors: " +
