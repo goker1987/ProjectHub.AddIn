@@ -3049,9 +3049,8 @@ namespace ProjectHub.AddIn.Services
                         task.Start.Value);
                 }
 
-                SetCrmDouble(
+                SetCrmDuration(
                     entity,
-                    "msdyn_duration",
                     task.DurationDays);
             }
 
@@ -3098,9 +3097,8 @@ namespace ProjectHub.AddIn.Services
 
                 if (update.DurationChanged)
                 {
-                    SetCrmDouble(
+                    SetCrmDuration(
                         entity,
-                        "msdyn_duration",
                         task.DurationDays);
                 }
 
@@ -3396,6 +3394,31 @@ namespace ProjectHub.AddIn.Services
 
             entity[field] =
                 value;
+        }
+
+        private static void SetCrmDuration(
+            Entity entity,
+            double durationDays)
+        {
+            if (double.IsNaN(
+                    durationDays) ||
+                double.IsInfinity(
+                    durationDays))
+            {
+                throw new InvalidOperationException(
+                    "msdyn_duration için geçersiz Duration değeri.");
+            }
+
+            decimal normalizedDuration =
+                Math.Round(
+                    Convert.ToDecimal(
+                        durationDays,
+                        CultureInfo.InvariantCulture),
+                    2,
+                    MidpointRounding.AwayFromZero);
+
+            entity["msdyn_duration"] =
+                normalizedDuration;
         }
 
         private static void SetCrmInt(
