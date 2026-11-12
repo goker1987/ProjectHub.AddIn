@@ -1387,6 +1387,26 @@ namespace ProjectHub.AddIn.Services
                         progress);
                 }
 
+                int remappedTaskIds =
+                    RemapNewTaskIdCollisions(
+                        projectBaseline,
+                        currentProject,
+                        currentCrm);
+
+                if (remappedTaskIds > 0)
+                {
+                    snapshotFingerprint =
+                        ComputeProjectFingerprint(
+                            currentProject);
+
+                    Report(
+                        progress,
+                        PublishStatusLevel.Info,
+                        "Preflight",
+                        remappedTaskIds +
+                        " yeni task için CRM ile çakışan kimlik yenilendi.");
+                }
+
                 string baselineProjectFingerprint =
                     ComputeProjectFingerprint(
                         projectBaseline);
@@ -2050,6 +2070,207 @@ namespace ProjectHub.AddIn.Services
                     }
                 }
             }
+        }
+
+        private static int RemapNewTaskIdCollisions(
+            ProjectSnapshot baseline,
+            ProjectSnapshot current,
+            CrmScheduleData crm)
+        {
+            if (baseline == null ||
+                current == null ||
+                crm == null ||
+                crm.Tasks == null)
+            {
+                return 0;
+            }
+
+            HashSet<Guid> baselineIds =
+                new HashSet<Guid>(
+                    baseline.Tasks.Select(
+                        x => x.Id));
+
+            HashSet<Guid> crmIds =
+                new HashSet<Guid>(
+                    crm.Tasks.Entities.Select(
+                        x => x.Id));
+
+            HashSet<Guid> occupiedIds =
+                new HashSet<Guid>(
+                    current.Tasks.Select(
+                        x => x.Id));
+
+            foreach (Guid id
+                     in baselineIds)
+            {
+                occupiedIds.Add(
+                    id);
+            }
+
+            foreach (Guid id
+                     in crmIds)
+            {
+                occupiedIds.Add(
+                    id);
+            }
+
+            Dictionary<Guid, Guid> remap =
+                new Dictionary<Guid, Guid>();
+
+            foreach (TaskSnapshot task
+                     in current.Tasks)
+            {
+                if (baselineIds.Contains(
+                        task.Id) ||
+                    !crmIds.Contains(
+                        task.Id))
+                {
+                    continue;
+                }
+
+                Guid newId;
+
+                do
+                {
+                    newId =
+                        Guid.NewGuid();
+                }
+                while (occupiedIds.Contains(
+                    newId));
+
+                occupiedIds.Add(
+                    newId);
+
+                remap[
+                    task.Id] =
+                    newId;
+            }
+
+            if (remap.Count == 0)
+                return 0;
+
+            foreach (TaskSnapshot task
+                     in current.Tasks)
+            {
+                Guid newId;
+
+                if (remap.TryGetValue(
+                    task.Id,
+                    out newId))
+                {
+                    task.Id =
+                        newId;
+                }
+
+                if (task.ParentId.HasValue &&
+                    remap.TryGetValue(
+                        task.ParentId.Value,
+                        out newId))
+                {
+                    task.ParentId =
+                        newId;
+                }
+            }
+
+            foreach (DependencySnapshot dependency
+                     in current.Dependencies)
+            {
+                Guid newId;
+
+                if (remap.TryGetValue(
+                    dependency.PredecessorId,
+                    out newId))
+                {
+                    dependency.PredecessorId =
+                        newId;
+                }
+
+                if (remap.TryGetValue(
+                    dependency.SuccessorId,
+                    out newId))
+                {
+                    dependency.SuccessorId =
+                        newId;
+                }
+            }
+
+            foreach (AssignmentSnapshot assignment
+                     in current.Assignments)
+            {
+                Guid newId;
+
+                if (remap.TryGetValue(
+                    assignment.TaskId,
+                    out newId))
+                {
+                    assignment.TaskId =
+                        newId;
+                }
+            }
+
+            List<int> taskIndexes =
+                current.TaskIds.Keys.ToList();
+
+            foreach (int taskIndex
+                     in taskIndexes)
+            {
+                Guid oldId =
+                    current.TaskIds[
+                        taskIndex];
+
+                Guid newId;
+
+                if (remap.TryGetValue(
+                    oldId,
+                    out newId))
+                {
+                    current.TaskIds[
+                        taskIndex] =
+                        newId;
+                }
+            }
+
+            try
+            {
+                MSProject.Project project =
+                    Globals.ThisAddIn
+                        .Application
+                        .ActiveProject;
+
+                if (project != null)
+                {
+                    foreach (MSProject.Task task
+                             in project.Tasks)
+                    {
+                        if (task == null)
+                            continue;
+
+                        Guid oldId;
+
+                        if (!Guid.TryParse(
+                            task.Text30,
+                            out oldId))
+                        {
+                            continue;
+                        }
+
+                        Guid newId;
+
+                        if (remap.TryGetValue(
+                            oldId,
+                            out newId))
+                        {
+                            task.Text30 =
+                                newId.ToString();
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return remap.Count;
         }
 
         // =========================================================
