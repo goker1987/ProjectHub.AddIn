@@ -1387,6 +1387,25 @@ namespace ProjectHub.AddIn.Services
                         progress);
                 }
 
+                int reusedTaskIds =
+                    ReuseBaselineTaskIdsForReplacements(
+                        projectBaseline,
+                        currentProject);
+
+                if (reusedTaskIds > 0)
+                {
+                    snapshotFingerprint =
+                        ComputeProjectFingerprint(
+                            currentProject);
+
+                    Report(
+                        progress,
+                        PublishStatusLevel.Info,
+                        "Preflight",
+                        reusedTaskIds +
+                        " yeniden eklenen task mevcut CRM kimliğiyle eşleştirildi.");
+                }
+
                 int remappedTaskIds =
                     RemapNewTaskIdCollisions(
                         projectBaseline,
@@ -2072,82 +2091,122 @@ namespace ProjectHub.AddIn.Services
             }
         }
 
-        private static int RemapNewTaskIdCollisions(
+        private static int ReuseBaselineTaskIdsForReplacements(
             ProjectSnapshot baseline,
-            ProjectSnapshot current,
-            CrmScheduleData crm)
+            ProjectSnapshot current)
         {
             if (baseline == null ||
-                current == null ||
-                crm == null ||
-                crm.Tasks == null)
+                current == null)
             {
                 return 0;
             }
+
+            HashSet<Guid> currentIds =
+                new HashSet<Guid>(
+                    current.Tasks.Select(
+                        x => x.Id));
 
             HashSet<Guid> baselineIds =
                 new HashSet<Guid>(
                     baseline.Tasks.Select(
                         x => x.Id));
 
-            HashSet<Guid> crmIds =
-                new HashSet<Guid>(
-                    crm.Tasks.Entities.Select(
-                        x => x.Id));
+            List<TaskSnapshot> missingBaseline =
+                baseline.Tasks
+                    .Where(
+                        x =>
+                            !currentIds.Contains(
+                                x.Id))
+                    .ToList();
 
-            HashSet<Guid> occupiedIds =
-                new HashSet<Guid>(
-                    current.Tasks.Select(
-                        x => x.Id));
+            List<TaskSnapshot> newCurrent =
+                current.Tasks
+                    .Where(
+                        x =>
+                            !baselineIds.Contains(
+                                x.Id))
+                    .ToList();
 
-            foreach (Guid id
-                     in baselineIds)
-            {
-                occupiedIds.Add(
-                    id);
-            }
+            Dictionary<string, List<TaskSnapshot>> baselineByKey =
+                missingBaseline
+                    .GroupBy(
+                        GetReplacementTaskKey)
+                    .ToDictionary(
+                        x => x.Key,
+                        x => x.ToList(),
+                        StringComparer.OrdinalIgnoreCase);
 
-            foreach (Guid id
-                     in crmIds)
-            {
-                occupiedIds.Add(
-                    id);
-            }
+            Dictionary<string, List<TaskSnapshot>> currentByKey =
+                newCurrent
+                    .GroupBy(
+                        GetReplacementTaskKey)
+                    .ToDictionary(
+                        x => x.Key,
+                        x => x.ToList(),
+                        StringComparer.OrdinalIgnoreCase);
 
             Dictionary<Guid, Guid> remap =
                 new Dictionary<Guid, Guid>();
 
-            foreach (TaskSnapshot task
-                     in current.Tasks)
+            foreach (KeyValuePair<string, List<TaskSnapshot>> pair
+                     in currentByKey)
             {
-                if (baselineIds.Contains(
-                        task.Id) ||
-                    !crmIds.Contains(
-                        task.Id))
+                List<TaskSnapshot> oldTasks;
+
+                if (!baselineByKey.TryGetValue(
+                        pair.Key,
+                        out oldTasks) ||
+                    pair.Value.Count != 1 ||
+                    oldTasks.Count != 1)
                 {
                     continue;
                 }
 
-                Guid newId;
-
-                do
-                {
-                    newId =
-                        Guid.NewGuid();
-                }
-                while (occupiedIds.Contains(
-                    newId));
-
-                occupiedIds.Add(
-                    newId);
-
                 remap[
-                    task.Id] =
-                    newId;
+                    pair.Value[0].Id] =
+                    oldTasks[0].Id;
             }
 
-            if (remap.Count == 0)
-                return 0;
+            ApplyTaskIdRemap(
+                current,
+                remap);
+
+            return remap.Count;
+        }
+
+        private static string GetReplacementTaskKey(
+            TaskSnapshot task)
+        {
+            return
+                NormalizeText(
+                    task != null
+                        ? task.Name
+                        : "") +
+                "|" +
+                (
+                    task != null
+                        ? task.OutlineLevel
+                        : 0
+                ) +
+                "|" +
+                (
+                    task != null &&
+                    task.IsSummary
+                        ? "S"
+                        : "T"
+                );
+        }
+
+        private static void ApplyTaskIdRemap(
+            ProjectSnapshot current,
+            Dictionary<Guid, Guid> remap)
+        {
+            if (current == null ||
+                remap == null ||
+                remap.Count == 0)
+            {
+                return;
+            }
 
             foreach (TaskSnapshot task
                      in current.Tasks)
@@ -2269,6 +2328,88 @@ namespace ProjectHub.AddIn.Services
             catch
             {
             }
+        }
+
+        private static int RemapNewTaskIdCollisions(
+            ProjectSnapshot baseline,
+            ProjectSnapshot current,
+            CrmScheduleData crm)
+        {
+            if (baseline == null ||
+                current == null ||
+                crm == null ||
+                crm.Tasks == null)
+            {
+                return 0;
+            }
+
+            HashSet<Guid> baselineIds =
+                new HashSet<Guid>(
+                    baseline.Tasks.Select(
+                        x => x.Id));
+
+            HashSet<Guid> crmIds =
+                new HashSet<Guid>(
+                    crm.Tasks.Entities.Select(
+                        x => x.Id));
+
+            HashSet<Guid> occupiedIds =
+                new HashSet<Guid>(
+                    current.Tasks.Select(
+                        x => x.Id));
+
+            foreach (Guid id
+                     in baselineIds)
+            {
+                occupiedIds.Add(
+                    id);
+            }
+
+            foreach (Guid id
+                     in crmIds)
+            {
+                occupiedIds.Add(
+                    id);
+            }
+
+            Dictionary<Guid, Guid> remap =
+                new Dictionary<Guid, Guid>();
+
+            foreach (TaskSnapshot task
+                     in current.Tasks)
+            {
+                if (baselineIds.Contains(
+                        task.Id) ||
+                    !crmIds.Contains(
+                        task.Id))
+                {
+                    continue;
+                }
+
+                Guid newId;
+
+                do
+                {
+                    newId =
+                        Guid.NewGuid();
+                }
+                while (occupiedIds.Contains(
+                    newId));
+
+                occupiedIds.Add(
+                    newId);
+
+                remap[
+                    task.Id] =
+                    newId;
+            }
+
+            if (remap.Count == 0)
+                return 0;
+
+            ApplyTaskIdRemap(
+                current,
+                remap);
 
             return remap.Count;
         }
