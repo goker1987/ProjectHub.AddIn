@@ -1187,6 +1187,13 @@ namespace ProjectHub.AddIn.Services
                     DeletedTasks =
                         pending.Plan.TaskDeletes.Count,
 
+                    SkippedTaskDeletes =
+                        pending.Plan.SkippedTaskDeletes.Count,
+
+                    SkippedTaskDeleteDetails =
+                        BuildSkippedTaskDeleteDetails(
+                            pending.Plan),
+
                     CreatedDependencies =
                         pending.Plan.DependencyCreates.Count,
 
@@ -1633,6 +1640,89 @@ namespace ProjectHub.AddIn.Services
                 };
         }
 
+        private static bool IsProtectedTaskDeleteError(
+            string error)
+        {
+            if (string.IsNullOrWhiteSpace(
+                error))
+            {
+                return false;
+            }
+
+            return
+                error.IndexOf(
+                    "ScheduleAPI-SRV-0003",
+                    StringComparison.OrdinalIgnoreCase) >= 0
+                ||
+                (
+                    error.IndexOf(
+                        "cannot be deleted",
+                        StringComparison.OrdinalIgnoreCase) >= 0
+                    &&
+                    error.IndexOf(
+                        "msdyn_projecttask",
+                        StringComparison.OrdinalIgnoreCase) >= 0
+                );
+        }
+
+        private static bool TryResolveProtectedTaskDelete(
+            string error,
+            PublishPlan plan,
+            out TaskDeletePlan task)
+        {
+            task =
+                null;
+
+            if (!IsProtectedTaskDeleteError(
+                    error) ||
+                plan == null)
+            {
+                return false;
+            }
+
+            foreach (TaskDeletePlan candidate
+                     in plan.TaskDeletes)
+            {
+                if (error.IndexOf(
+                        candidate.TaskId.ToString(),
+                        StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    task =
+                        candidate;
+
+                    return true;
+                }
+            }
+
+            if (plan.TaskDeletes.Count == 1)
+            {
+                task =
+                    plan.TaskDeletes[0];
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string BuildSkippedTaskDeleteDetails(
+            PublishPlan plan)
+        {
+            if (plan == null ||
+                plan.SkippedTaskDeletes.Count == 0)
+            {
+                return null;
+            }
+
+            return string.Join(
+                "\r\n",
+                plan.SkippedTaskDeletes.Select(
+                    x =>
+                        "• " +
+                        x.TaskName +
+                        " — CRM geçmişi/bağımlılıkları nedeniyle silinemedi."));
+        }
+
         private static string BuildPlanDescription(
             PublishPlan plan)
         {
@@ -1651,7 +1741,9 @@ namespace ProjectHub.AddIn.Services
                 plan.TaskUpdates.Count +
                 " update, " +
                 plan.TaskDeletes.Count +
-                " delete" +
+                " delete, " +
+                plan.SkippedTaskDeletes.Count +
+                " protected/skipped" +
                 "\r\n" +
 
                 "Predecessors: " +
@@ -3092,7 +3184,8 @@ namespace ProjectHub.AddIn.Services
             foreach (TaskDeletePlan task
                      in plan.TaskDeletes
                          .OrderByDescending(
-                             x => x.OutlineLevel))
+                             x => x.OutlineLevel)
+                         .ToList())
             {
                 if (!TryPssDelete(
                     task.TaskId,
@@ -3100,6 +3193,35 @@ namespace ProjectHub.AddIn.Services
                     operationSetId,
                     out requestError))
                 {
+                    if (IsProtectedTaskDeleteError(
+                        requestError))
+                    {
+                        plan.TaskDeletes.Remove(
+                            task);
+
+                        plan.SkippedTaskDeletes.Add(
+                            new SkippedTaskDeletePlan
+                            {
+                                TaskId =
+                                    task.TaskId,
+
+                                TaskName =
+                                    task.TaskName,
+
+                                Reason =
+                                    requestError
+                            });
+
+                        Report(
+                            progress,
+                            PublishStatusLevel.Warning,
+                            "Task not deleted",
+                            task.TaskName +
+                            ": CRM geçmişi/bağımlılıkları nedeniyle silinemedi. Publish geri kalan işlemlerle devam ediyor.");
+
+                        continue;
+                    }
+
                     TryAbandonOperationSet(
                         operationSetId);
 
@@ -3229,6 +3351,49 @@ namespace ProjectHub.AddIn.Services
                 operationSetId,
                 out requestError))
             {
+                TaskDeletePlan protectedDelete;
+
+                if (TryResolveProtectedTaskDelete(
+                    requestError,
+                    plan,
+                    out protectedDelete))
+                {
+                    TryAbandonOperationSet(
+                        operationSetId);
+
+                    plan.TaskDeletes.Remove(
+                        protectedDelete);
+
+                    plan.SkippedTaskDeletes.Add(
+                        new SkippedTaskDeletePlan
+                        {
+                            TaskId =
+                                protectedDelete.TaskId,
+
+                            TaskName =
+                                protectedDelete.TaskName,
+
+                            Reason =
+                                requestError
+                        });
+
+                    Report(
+                        progress,
+                        PublishStatusLevel.Warning,
+                        "Task not deleted",
+                        protectedDelete.TaskName +
+                        ": CRM geçmişi/bağımlılıkları nedeniyle silinemedi. Publish yeniden deneniyor.");
+
+                    return ExecutePublishPlan(
+                        projectId,
+                        snapshot,
+                        oldCrm,
+                        plan,
+                        snapshotFingerprint,
+                        expectedCrmFingerprint,
+                        progress);
+                }
+
                 TryAbandonOperationSet(
                     operationSetId);
 
@@ -3266,6 +3431,13 @@ namespace ProjectHub.AddIn.Services
 
                     DeletedTasks =
                         plan.TaskDeletes.Count,
+
+                    SkippedTaskDeletes =
+                        plan.SkippedTaskDeletes.Count,
+
+                    SkippedTaskDeleteDetails =
+                        BuildSkippedTaskDeleteDetails(
+                            plan),
 
                     CreatedDependencies =
                         plan.DependencyCreates.Count,
@@ -5616,6 +5788,15 @@ namespace ProjectHub.AddIn.Services
             public string Key { get; set; }
         }
 
+        private class SkippedTaskDeletePlan
+        {
+            public Guid TaskId { get; set; }
+
+            public string TaskName { get; set; }
+
+            public string Reason { get; set; }
+        }
+
         private class PublishPlan
         {
             public bool ProjectPercentChanged;
@@ -5628,6 +5809,9 @@ namespace ProjectHub.AddIn.Services
 
             public List<TaskDeletePlan> TaskDeletes =
                 new List<TaskDeletePlan>();
+
+            public List<SkippedTaskDeletePlan> SkippedTaskDeletes =
+                new List<SkippedTaskDeletePlan>();
 
             public List<DependencySnapshot> DependencyCreates =
                 new List<DependencySnapshot>();
