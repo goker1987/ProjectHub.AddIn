@@ -55,6 +55,10 @@ namespace ProjectHub.AddIn
 
         public int DeletedTasks { get; set; }
 
+        public int SkippedTaskDeletes { get; set; }
+
+        public string SkippedTaskDeleteDetails { get; set; }
+
         public int CreatedDependencies { get; set; }
 
         public int DeletedDependencies { get; set; }
