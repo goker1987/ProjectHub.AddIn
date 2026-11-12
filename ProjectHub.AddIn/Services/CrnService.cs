@@ -3409,11 +3409,9 @@ namespace ProjectHub.AddIn.Services
                     "msdyn_duration için geçersiz Duration değeri.");
             }
 
-            decimal normalizedDuration =
+            double normalizedDuration =
                 Math.Round(
-                    Convert.ToDecimal(
-                        durationDays,
-                        CultureInfo.InvariantCulture),
+                    durationDays,
                     2,
                     MidpointRounding.AwayFromZero);
 
