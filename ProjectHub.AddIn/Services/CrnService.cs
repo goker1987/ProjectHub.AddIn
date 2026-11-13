@@ -1640,6 +1640,31 @@ namespace ProjectHub.AddIn.Services
                 };
         }
 
+        private static bool IsDuplicateTaskIdError(
+            string error)
+        {
+            if (string.IsNullOrWhiteSpace(
+                error))
+            {
+                return false;
+            }
+
+            return
+                error.IndexOf(
+                    "ScheduleAPI-EV-0007",
+                    StringComparison.OrdinalIgnoreCase) >= 0
+                ||
+                (
+                    error.IndexOf(
+                        "already exists",
+                        StringComparison.OrdinalIgnoreCase) >= 0
+                    &&
+                    error.IndexOf(
+                        "msdyn_projecttask",
+                        StringComparison.OrdinalIgnoreCase) >= 0
+                );
+        }
+
         private static bool IsProtectedTaskDeleteError(
             string error)
         {
@@ -3034,7 +3059,8 @@ namespace ProjectHub.AddIn.Services
             PublishPlan plan,
             string snapshotFingerprint,
             string expectedCrmFingerprint,
-            Action<PublishProgressInfo> progress)
+            Action<PublishProgressInfo> progress,
+            int taskIdCollisionRetry = 0)
         {
             CrmScheduleData latestCrm;
 
@@ -3252,6 +3278,51 @@ namespace ProjectHub.AddIn.Services
                     operationSetId,
                     out requestError))
                 {
+                    if (IsDuplicateTaskIdError(
+                            requestError) &&
+                        taskIdCollisionRetry < 5)
+                    {
+                        TryAbandonOperationSet(
+                            operationSetId);
+
+                        Guid oldTaskId =
+                            task.Id;
+
+                        Guid newTaskId =
+                            Guid.NewGuid();
+
+                        ApplyTaskIdRemap(
+                            snapshot,
+                            new Dictionary<Guid, Guid>
+                            {
+                                {
+                                    oldTaskId,
+                                    newTaskId
+                                }
+                            });
+
+                        snapshotFingerprint =
+                            ComputeProjectFingerprint(
+                                snapshot);
+
+                        Report(
+                            progress,
+                            PublishStatusLevel.Warning,
+                            "Task ID collision",
+                            task.Name +
+                            ": CRM'de aynı task kimliği zaten bulundu. Yeni kimlik üretildi ve Publish yeniden deneniyor.");
+
+                        return ExecutePublishPlan(
+                            projectId,
+                            snapshot,
+                            oldCrm,
+                            plan,
+                            snapshotFingerprint,
+                            expectedCrmFingerprint,
+                            progress,
+                            taskIdCollisionRetry + 1);
+                    }
+
                     TryAbandonOperationSet(
                         operationSetId);
 
