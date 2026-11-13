@@ -6,11 +6,11 @@ using System.Security;
 // Bir bütünleştirilmiş koda ilişkin Genel Bilgiler aşağıdaki öznitelikler kümesiyle
 // denetlenir. Bütünleştirilmiş kod ile ilişkili bilgileri değiştirmek için
 // bu öznitelik değerlerini değiştirin.
-[assembly: AssemblyTitle("Project Operation Connector")]
+[assembly: AssemblyTitle("Project Operations Connector")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Turuncu Teknoloji")]
-[assembly: AssemblyProduct("Project Operation Connector")]
+[assembly: AssemblyProduct("Project Operations Connector")]
 [assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
