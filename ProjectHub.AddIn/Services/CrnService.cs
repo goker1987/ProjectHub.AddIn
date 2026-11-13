@@ -70,7 +70,7 @@ namespace ProjectHub.AddIn.Services
             200;
 
         private const int QuickVerificationSeconds =
-            8;
+            20;
 
         // =========================================================
         // STATE
