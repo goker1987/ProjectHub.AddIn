@@ -5414,6 +5414,10 @@ namespace ProjectHub.AddIn.Services
             return
                 GetDateTime(
                     task,
+                    "msdyn_tzascheduledstart")
+                ??
+                GetDateTime(
+                    task,
                     "msdyn_start")
                 ??
                 GetDateTime(
@@ -5425,6 +5429,10 @@ namespace ProjectHub.AddIn.Services
             Entity task)
         {
             return
+                GetDateTime(
+                    task,
+                    "msdyn_tzascheduledend")
+                ??
                 GetDateTime(
                     task,
                     "msdyn_finish")
