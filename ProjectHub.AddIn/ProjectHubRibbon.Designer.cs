@@ -52,7 +52,7 @@
             // 
             this.grpProject.Items.Add(this.btnConnect);
             this.grpProject.Items.Add(this.btnPublish);
-            this.grpProject.Label = "Build 1.0.1.11";
+            this.grpProject.Label = "Build 1.0.1.12";
             this.grpProject.Name = "grpProject";
             // 
             // btnConnect
