@@ -98,7 +98,8 @@ namespace ProjectHub.AddIn
                     CreateTasks(
                         project,
                         crmTasks,
-                        bucketMap);
+                        bucketMap,
+                        schedule.ProjectId);
 
                 // Önce hierarchy.
                 ApplyHierarchy(
@@ -502,7 +503,8 @@ namespace ProjectHub.AddIn
         private static Dictionary<Guid, MSProject.Task> CreateTasks(
             MSProject.Project project,
             List<Entity> crmTasks,
-            Dictionary<Guid, Entity> bucketMap)
+            Dictionary<Guid, Entity> bucketMap,
+            Guid projectId)
         {
             Dictionary<Guid, MSProject.Task> result =
                 new Dictionary<Guid, MSProject.Task>();
@@ -534,7 +536,7 @@ namespace ProjectHub.AddIn
                 // CRM Project ID
                 // Used to detect tasks copied from another MPP/project.
                 task.Text26 =
-                    schedule.ProjectId.ToString();
+                    projectId.ToString();
 
                 // =================================================
                 // BUCKET
