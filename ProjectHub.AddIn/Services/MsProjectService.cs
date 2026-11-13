@@ -1155,11 +1155,44 @@ namespace ProjectHub.AddIn
                         predecessor,
                         GetProjectLinkType(
                             dependency),
-                        Type.Missing);
+                        GetProjectDependencyLagMinutes(
+                            dependency));
                 }
                 catch
                 {
                 }
+            }
+        }
+
+        private static object GetProjectDependencyLagMinutes(
+            Entity entity)
+        {
+            if (entity == null)
+                return Type.Missing;
+
+            object value;
+
+            if (!entity.Attributes.TryGetValue(
+                    "msdyn_projecttaskdependencylinklag",
+                    out value) ||
+                value == null)
+            {
+                return Type.Missing;
+            }
+
+            try
+            {
+                double seconds =
+                    Convert.ToDouble(
+                        value,
+                        CultureInfo.InvariantCulture);
+
+                return
+                    seconds / 60.0;
+            }
+            catch
+            {
+                return Type.Missing;
             }
         }
 
