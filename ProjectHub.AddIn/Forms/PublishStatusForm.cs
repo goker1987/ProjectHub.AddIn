@@ -46,7 +46,7 @@ namespace ProjectHub.AddIn.Forms
         private void BuildLayout()
         {
             Text =
-                "Project Operation Connector";
+                "Project Operations Connector";
 
             ClientSize =
                 new Size(
@@ -100,7 +100,7 @@ namespace ProjectHub.AddIn.Forms
                 new Label
                 {
                     Text =
-                        "Project Operation Connector",
+                        "Project Operations Connector",
 
                     Left = 82,
                     Top = 23,
