@@ -1841,15 +1841,34 @@ namespace ProjectHub.AddIn.Services
 
                 Guid taskId;
 
-                if (!Guid.TryParse(
-                    task.Text30,
-                    out taskId))
+                Guid storedProjectId;
+
+                bool hasTaskId =
+                    Guid.TryParse(
+                        task.Text30,
+                        out taskId);
+
+                bool hasStoredProjectId =
+                    Guid.TryParse(
+                        task.Text26,
+                        out storedProjectId);
+
+                bool belongsToCurrentProject =
+                    hasStoredProjectId &&
+                    storedProjectId ==
+                    projectId;
+
+                if (!hasTaskId ||
+                    !belongsToCurrentProject)
                 {
                     taskId =
                         Guid.NewGuid();
 
                     task.Text30 =
                         taskId.ToString();
+
+                    task.Text26 =
+                        projectId.ToString();
                 }
 
                 snapshot.TaskIds[
@@ -2438,6 +2457,9 @@ namespace ProjectHub.AddIn.Services
                         {
                             task.Text30 =
                                 newId.ToString();
+
+                            task.Text26 =
+                                current.ProjectId.ToString();
                         }
                     }
                 }
