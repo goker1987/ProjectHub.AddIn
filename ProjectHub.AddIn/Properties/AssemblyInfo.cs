@@ -33,6 +33,6 @@ using System.Security;
 // Değerlerin tümünü belirtebilir ya da Yapı ve Düzeltme Numaralarını aşağıda gösterildiği gibi 
 // '*' kullanarak varsayılana ayarlayabilirsiniz:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.1.7")]
-[assembly: AssemblyFileVersion("1.0.1.7")]
+[assembly: AssemblyVersion("1.0.1.8")]
+[assembly: AssemblyFileVersion("1.0.1.8")]
 
