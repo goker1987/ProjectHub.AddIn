@@ -22,5 +22,17 @@ namespace ProjectHub.AddIn.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastDynamicsUrl {
+            get {
+                return ((string)(this["LastDynamicsUrl"]));
+            }
+            set {
+                this["LastDynamicsUrl"] = value;
+            }
+        }
     }
 }
