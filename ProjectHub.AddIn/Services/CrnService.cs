@@ -2800,36 +2800,34 @@ namespace ProjectHub.AddIn.Services
             CrmScheduleData crm,
             PublishPlan plan)
         {
-            Dictionary<string, DependencySnapshot> baselineDependencies =
-                baseline.Dependencies
-                    .ToDictionary(
-                        x => x.Key,
-                        x => x,
-                        StringComparer.OrdinalIgnoreCase);
-
-            Dictionary<string, DependencySnapshot> currentDependencies =
+            Dictionary<string, DependencySnapshot> currentByPair =
                 current.Dependencies
+                    .GroupBy(
+                        GetDependencyPairKey,
+                        StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(
                         x => x.Key,
-                        x => x,
+                        x => x.First(),
                         StringComparer.OrdinalIgnoreCase);
 
-            Dictionary<string, Entity> crmDependencies =
+            Dictionary<string, Entity> crmByPair =
                 new Dictionary<string, Entity>(
                     StringComparer.OrdinalIgnoreCase);
 
             foreach (Entity entity
                      in crm.Dependencies.Entities)
             {
-                string key =
-                    GetCrmDependencyKey(
+                string pairKey =
+                    GetCrmDependencyPairKey(
                         entity);
 
                 if (!string.IsNullOrWhiteSpace(
-                    key))
+                    pairKey) &&
+                    !crmByPair.ContainsKey(
+                        pairKey))
                 {
-                    crmDependencies[
-                        key] =
+                    crmByPair[
+                        pairKey] =
                         entity;
                 }
             }
@@ -2837,43 +2835,72 @@ namespace ProjectHub.AddIn.Services
             foreach (DependencySnapshot dependency
                      in current.Dependencies)
             {
-                if (!baselineDependencies.ContainsKey(
-                    dependency.Key))
+                string pairKey =
+                    GetDependencyPairKey(
+                        dependency);
+
+                Entity existing;
+
+                if (!crmByPair.TryGetValue(
+                        pairKey,
+                        out existing))
                 {
                     plan.DependencyCreates.Add(
                         dependency);
+
+                    continue;
                 }
-                else
+
+                string crmKey =
+                    GetCrmDependencyKey(
+                        existing);
+
+                if (string.Equals(
+                    crmKey,
+                    dependency.Key,
+                    StringComparison.OrdinalIgnoreCase))
                 {
                     plan.UnchangedDependencies++;
+
+                    continue;
                 }
+
+                plan.DependencyDeletes.Add(
+                    new DependencyDeletePlan
+                    {
+                        Id =
+                            existing.Id,
+
+                        Key =
+                            crmKey
+                    });
+
+                plan.DependencyCreates.Add(
+                    dependency);
             }
 
-            foreach (DependencySnapshot dependency
-                     in baseline.Dependencies)
+            foreach (KeyValuePair<string, Entity> pair
+                     in crmByPair)
             {
-                if (currentDependencies.ContainsKey(
-                    dependency.Key))
+                if (currentByPair.ContainsKey(
+                    pair.Key))
                 {
                     continue;
                 }
 
-                Entity crmDependency;
+                string crmKey =
+                    GetCrmDependencyKey(
+                        pair.Value);
 
-                if (crmDependencies.TryGetValue(
-                    dependency.Key,
-                    out crmDependency))
-                {
-                    plan.DependencyDeletes.Add(
-                        new DependencyDeletePlan
-                        {
-                            Id =
-                                crmDependency.Id,
+                plan.DependencyDeletes.Add(
+                    new DependencyDeletePlan
+                    {
+                        Id =
+                            pair.Value.Id,
 
-                            Key =
-                                dependency.Key
-                        });
-                }
+                        Key =
+                            crmKey
+                    });
             }
         }
 
@@ -4851,6 +4878,44 @@ namespace ProjectHub.AddIn.Services
             }
 
             return result;
+        }
+
+        private static string GetDependencyPairKey(
+            DependencySnapshot dependency)
+        {
+            if (dependency == null)
+                return null;
+
+            return
+                dependency.PredecessorId +
+                "|" +
+                dependency.SuccessorId;
+        }
+
+        private static string GetCrmDependencyPairKey(
+            Entity dependency)
+        {
+            if (dependency == null)
+                return null;
+
+            EntityReference predecessor =
+                dependency.GetAttributeValue<EntityReference>(
+                    "msdyn_predecessortask");
+
+            EntityReference successor =
+                dependency.GetAttributeValue<EntityReference>(
+                    "msdyn_successortask");
+
+            if (predecessor == null ||
+                successor == null)
+            {
+                return null;
+            }
+
+            return
+                predecessor.Id +
+                "|" +
+                successor.Id;
         }
 
         private static string GetCrmDependencyKey(
