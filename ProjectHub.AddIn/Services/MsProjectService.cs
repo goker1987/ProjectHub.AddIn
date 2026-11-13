@@ -531,6 +531,11 @@ namespace ProjectHub.AddIn
                 task.Text30 =
                     source.Id.ToString();
 
+                // CRM Project ID
+                // Used to detect tasks copied from another MPP/project.
+                task.Text26 =
+                    schedule.ProjectId.ToString();
+
                 // =================================================
                 // BUCKET
                 // =================================================
