@@ -3363,6 +3363,32 @@ namespace ProjectHub.AddIn.Services
                 }
             }
 
+            foreach (DependencySnapshot dependency
+                     in plan.DependencyCreates)
+            {
+                Entity entity =
+                    CreateDependencyEntity(
+                        dependency,
+                        projectReference);
+
+                if (!TryPssCreate(
+                    entity,
+                    operationSetId,
+                    out requestError))
+                {
+                    TryAbandonOperationSet(
+                        operationSetId);
+
+                    return FailedResult(
+                        operationSetId,
+                        snapshotFingerprint,
+                        "Predecessor oluşturulamadı." +
+                        "\r\n\r\n" +
+                        requestError,
+                        progress);
+                }
+            }
+
             foreach (TaskUpdatePlan update
                      in plan.TaskUpdates)
             {
@@ -3389,16 +3415,39 @@ namespace ProjectHub.AddIn.Services
                 }
             }
 
-            foreach (DependencySnapshot dependency
-                     in plan.DependencyCreates)
-            {
-                Entity entity =
-                    CreateDependencyEntity(
-                        dependency,
-                        projectReference);
+            HashSet<Guid> updatedTaskIds =
+                new HashSet<Guid>(
+                    plan.TaskUpdates.Select(
+                        x => x.Task.Id));
 
-                if (!TryPssCreate(
-                    entity,
+            foreach (Guid successorId
+                     in plan.DependencyCreates
+                         .Select(
+                             x => x.SuccessorId)
+                         .Distinct())
+            {
+                if (updatedTaskIds.Contains(
+                        successorId))
+                {
+                    continue;
+                }
+
+                TaskSnapshot successor =
+                    snapshot.Tasks.FirstOrDefault(
+                        x => x.Id == successorId);
+
+                if (successor == null ||
+                    successor.IsSummary)
+                {
+                    continue;
+                }
+
+                Entity alignment =
+                    CreateTaskScheduleEntity(
+                        successor);
+
+                if (!TryPssUpdate(
+                    alignment,
                     operationSetId,
                     out requestError))
                 {
@@ -3408,7 +3457,8 @@ namespace ProjectHub.AddIn.Services
                     return FailedResult(
                         operationSetId,
                         snapshotFingerprint,
-                        "Predecessor oluşturulamadı." +
+                        successor.Name +
+                        ": Dependency sonrası schedule hizalanamadı." +
                         "\r\n\r\n" +
                         requestError,
                         progress);
@@ -3680,6 +3730,14 @@ namespace ProjectHub.AddIn.Services
                         task.Start.Value);
                 }
 
+                if (task.Finish.HasValue)
+                {
+                    SetCrmDateTime(
+                        entity,
+                        "msdyn_finish",
+                        task.Finish.Value);
+                }
+
                 SetCrmDuration(
                     entity,
                     task.DurationDays);
@@ -3715,10 +3773,14 @@ namespace ProjectHub.AddIn.Services
                     task.PercentComplete);
             }
 
-            if (!task.IsSummary)
+            if (!task.IsSummary &&
+                (
+                    update.StartChanged ||
+                    update.DurationChanged ||
+                    update.FinishChanged
+                ))
             {
-                if (update.StartChanged &&
-                    task.Start.HasValue)
+                if (task.Start.HasValue)
                 {
                     SetCrmDateTime(
                         entity,
@@ -3726,22 +3788,49 @@ namespace ProjectHub.AddIn.Services
                         task.Start.Value);
                 }
 
-                if (update.DurationChanged)
-                {
-                    SetCrmDuration(
-                        entity,
-                        task.DurationDays);
-                }
-
-                if (update.FinishChanged &&
-                    task.Finish.HasValue)
+                if (task.Finish.HasValue)
                 {
                     SetCrmDateTime(
                         entity,
                         "msdyn_finish",
                         task.Finish.Value);
                 }
+
+                SetCrmDuration(
+                    entity,
+                    task.DurationDays);
             }
+
+            return entity;
+        }
+
+        private Entity CreateTaskScheduleEntity(
+            TaskSnapshot task)
+        {
+            Entity entity =
+                new Entity(
+                    "msdyn_projecttask",
+                    task.Id);
+
+            if (task.Start.HasValue)
+            {
+                SetCrmDateTime(
+                    entity,
+                    "msdyn_start",
+                    task.Start.Value);
+            }
+
+            if (task.Finish.HasValue)
+            {
+                SetCrmDateTime(
+                    entity,
+                    "msdyn_finish",
+                    task.Finish.Value);
+            }
+
+            SetCrmDuration(
+                entity,
+                task.DurationDays);
 
             return entity;
         }
