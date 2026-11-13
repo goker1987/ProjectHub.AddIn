@@ -16,6 +16,11 @@ namespace ProjectHub.AddIn.Forms
         private Label lblConnectionState;
         private Label lblBuildInfo;
 
+        private TextBox txtSearch;
+
+        private readonly List<CrmProject> _allProjects =
+            new List<CrmProject>();
+
         private PictureBox picProductLogo;
         private PictureBox picCompanyLogo;
 
@@ -242,6 +247,55 @@ namespace ProjectHub.AddIn.Forms
                 lblConnectionState);
 
             // =====================================================
+            // SEARCH
+            // =====================================================
+
+            Label lblSearch =
+                new Label
+                {
+                    Text = "Search",
+
+                    Left = 20,
+                    Top = 151,
+                    Width = 70,
+                    Height = 26,
+
+                    TextAlign =
+                        ContentAlignment.MiddleLeft,
+
+                    ForeColor =
+                        TextPrimary,
+
+                    Font =
+                        new Font(
+                            "Segoe UI",
+                            9F)
+                };
+
+            Controls.Add(
+                lblSearch);
+
+            txtSearch =
+                new TextBox
+                {
+                    Left = 92,
+                    Top = 151,
+                    Width = 648,
+                    Height = 26,
+
+                    Font =
+                        new Font(
+                            "Segoe UI",
+                            9F)
+                };
+
+            txtSearch.TextChanged +=
+                TxtSearch_TextChanged;
+
+            Controls.Add(
+                txtSearch);
+
+            // =====================================================
             // GRID
             // =====================================================
 
@@ -249,10 +303,10 @@ namespace ProjectHub.AddIn.Forms
                 new DataGridView
                 {
                     Left = 20,
-                    Top = 151,
+                    Top = 183,
 
                     Width = 720,
-                    Height = 255,
+                    Height = 223,
 
                     BackgroundColor =
                         Color.White,
@@ -578,6 +632,22 @@ namespace ProjectHub.AddIn.Forms
 
             if (!Globals.ThisAddIn.Crm.IsConnected)
             {
+                try
+                {
+                    string lastUrl =
+                        Properties.Settings.Default.LastDynamicsUrl;
+
+                    if (!string.IsNullOrWhiteSpace(
+                        lastUrl))
+                    {
+                        txtUrl.Text =
+                            lastUrl;
+                    }
+                }
+                catch
+                {
+                }
+
                 UpdateConnectionState(
                     false);
 
@@ -672,6 +742,17 @@ namespace ProjectHub.AddIn.Forms
                     Globals.ThisAddIn.Crm.ConnectedUrl
                     ?? url;
 
+                try
+                {
+                    Properties.Settings.Default.LastDynamicsUrl =
+                        txtUrl.Text;
+
+                    Properties.Settings.Default.Save();
+                }
+                catch
+                {
+                }
+
                 UpdateConnectionState(
                     true);
 
@@ -740,6 +821,70 @@ namespace ProjectHub.AddIn.Forms
         // =========================================================
 
         private void ShowProjects(
+            List<CrmProject> projects)
+        {
+            _allProjects.Clear();
+
+            if (projects != null)
+            {
+                _allProjects.AddRange(
+                    projects);
+            }
+
+            ApplyProjectFilter();
+        }
+
+        private void TxtSearch_TextChanged(
+            object sender,
+            EventArgs e)
+        {
+            ApplyProjectFilter();
+        }
+
+        private void ApplyProjectFilter()
+        {
+            string search =
+                txtSearch != null &&
+                txtSearch.Text != null
+                    ? txtSearch.Text.Trim()
+                    : "";
+
+            List<CrmProject> filtered =
+                string.IsNullOrWhiteSpace(
+                    search)
+                    ? new List<CrmProject>(
+                        _allProjects)
+                    : _allProjects
+                        .Where(
+                            project =>
+                                ContainsText(
+                                    project.Name,
+                                    search)
+                                ||
+                                ContainsText(
+                                    project.ProjectManager,
+                                    search))
+                        .ToList();
+
+            RenderProjects(
+                filtered);
+        }
+
+        private static bool ContainsText(
+            string value,
+            string search)
+        {
+            return
+                !string.IsNullOrWhiteSpace(
+                    value)
+                &&
+                value.IndexOf(
+                    search,
+                    StringComparison.CurrentCultureIgnoreCase)
+                >= 0;
+        }
+
+        private void RenderProjects(
             List<CrmProject> projects)
         {
             projects =
@@ -819,12 +964,9 @@ namespace ProjectHub.AddIn.Forms
 
             lblProjectCount.Text =
                 projects.Count +
-                " project" +
-                (
-                    projects.Count == 1
-                        ? ""
-                        : "s"
-                );
+                " / " +
+                _allProjects.Count +
+                " projects";
 
             btnOpen.Enabled =
                 projects.Count > 0;
