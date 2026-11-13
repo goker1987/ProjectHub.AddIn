@@ -4357,8 +4357,9 @@ namespace ProjectHub.AddIn.Services
                             "msdyn_duration");
 
                     if (!crmDuration.HasValue ||
-                        !SameDuration(
-                            expected.DurationDays,
+                        !SameDurationOrCalendarNormalized(
+                            expected,
+                            actual,
                             crmDuration.Value))
                     {
                         mismatch =
@@ -4485,8 +4486,9 @@ namespace ProjectHub.AddIn.Services
                                 "msdyn_duration");
 
                         if (!crmDuration.HasValue ||
-                            !SameDuration(
-                                update.Task.DurationDays,
+                            !SameDurationOrCalendarNormalized(
+                                update.Task,
+                                actual,
                                 crmDuration.Value))
                         {
                             mismatch =
@@ -5330,6 +5332,52 @@ namespace ProjectHub.AddIn.Services
                     projectDays -
                     crmDays)
                 <= 0.01;
+        }
+
+        private static bool SameDurationOrCalendarNormalized(
+            TaskSnapshot task,
+            Entity crmTask,
+            double crmDays)
+        {
+            if (task == null ||
+                crmTask == null)
+            {
+                return false;
+            }
+
+            if (SameDuration(
+                task.DurationDays,
+                crmDays))
+            {
+                return true;
+            }
+
+            // Project Operations can normalize Duration by one working
+            // day according to its project calendar. Accept that only
+            // when the resulting Start and Finish dates still match.
+            if (Math.Abs(
+                    task.DurationDays -
+                    crmDays) > 1.01)
+            {
+                return false;
+            }
+
+            DateTime? crmStart =
+                GetTaskStart(
+                    crmTask);
+
+            DateTime? crmFinish =
+                GetTaskFinish(
+                    crmTask);
+
+            return
+                SameCalendarDate(
+                    task.Start,
+                    crmStart)
+                &&
+                SameCalendarDate(
+                    task.Finish,
+                    crmFinish);
         }
 
         private static DateTime TrimToMinute(
