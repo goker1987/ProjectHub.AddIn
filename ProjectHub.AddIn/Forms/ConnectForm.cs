@@ -56,7 +56,7 @@ namespace ProjectHub.AddIn.Forms
             Controls.Clear();
 
             Text =
-                "Project Operation Connector";
+                "Project Operations Connector";
 
             StartPosition =
                 FormStartPosition.CenterScreen;
@@ -115,7 +115,7 @@ namespace ProjectHub.AddIn.Forms
                 new Label
                 {
                     Text =
-                        "Project Operation Connector",
+                        "Project Operations Connector",
 
                     Left = 92,
                     Top = 27,
@@ -257,7 +257,7 @@ namespace ProjectHub.AddIn.Forms
 
                     Left = 20,
                     Top = 151,
-                    Width = 70,
+                    Width = 78,
                     Height = 26,
 
                     TextAlign =
@@ -278,9 +278,9 @@ namespace ProjectHub.AddIn.Forms
             txtSearch =
                 new TextBox
                 {
-                    Left = 92,
+                    Left = 100,
                     Top = 151,
-                    Width = 648,
+                    Width = 640,
                     Height = 26,
 
                     Font =
@@ -697,7 +697,7 @@ namespace ProjectHub.AddIn.Forms
             {
                 MessageBox.Show(
                     "Dynamics 365 URL girin.",
-                    "Project Operation Connector",
+                    "Project Operations Connector",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
 
@@ -728,7 +728,7 @@ namespace ProjectHub.AddIn.Forms
                             Globals.ThisAddIn.Crm.LastError)
                             ? "Dynamics 365 bağlantısı kurulamadı."
                             : Globals.ThisAddIn.Crm.LastError,
-                        "Project Operation Connector",
+                        "Project Operations Connector",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
 
@@ -762,7 +762,7 @@ namespace ProjectHub.AddIn.Forms
             {
                 MessageBox.Show(
                     ex.Message,
-                    "Project Operation Connector",
+                    "Project Operations Connector",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
@@ -804,7 +804,7 @@ namespace ProjectHub.AddIn.Forms
             {
                 MessageBox.Show(
                     ex.Message,
-                    "Project Operation Connector",
+                    "Project Operations Connector",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
@@ -1060,7 +1060,7 @@ namespace ProjectHub.AddIn.Forms
             {
                 MessageBox.Show(
                     "Bir proje seçin.",
-                    "Project Operation Connector",
+                    "Project Operations Connector",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
 
@@ -1084,7 +1084,7 @@ namespace ProjectHub.AddIn.Forms
                 {
                     MessageBox.Show(
                         "Seçilen projede task bulunamadı.",
-                        "Project Operation Connector",
+                        "Project Operations Connector",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
 
@@ -1123,7 +1123,7 @@ namespace ProjectHub.AddIn.Forms
             {
                 MessageBox.Show(
                     ex.Message,
-                    "Project Operation Connector",
+                    "Project Operations Connector",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
