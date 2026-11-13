@@ -2109,7 +2109,11 @@ namespace ProjectHub.AddIn.Services
 
                                 LinkType =
                                     ConvertLinkType(
-                                        dependency.Type)
+                                        dependency.Type),
+
+                                LagSeconds =
+                                    ConvertDependencyLagToSeconds(
+                                        dependency.Lag)
                             };
 
                         if (dependencyKeys.Add(
@@ -3779,6 +3783,11 @@ namespace ProjectHub.AddIn.Services
                 "msdyn_linktype",
                 dependency.LinkType);
 
+            SetCrmInt(
+                entity,
+                "msdyn_projecttaskdependencylinklag",
+                dependency.LagSeconds);
+
             return entity;
         }
 
@@ -4781,12 +4790,38 @@ namespace ProjectHub.AddIn.Services
                     ? type.Value
                     : 192350000;
 
+            int lagSeconds =
+                0;
+
+            object lagValue;
+
+            if (dependency.Attributes.TryGetValue(
+                    "msdyn_projecttaskdependencylinklag",
+                    out lagValue) &&
+                lagValue != null)
+            {
+                try
+                {
+                    lagSeconds =
+                        Convert.ToInt32(
+                            lagValue,
+                            CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    lagSeconds =
+                        0;
+                }
+            }
+
             return
                 predecessor.Id +
                 "|" +
                 successor.Id +
                 "|" +
-                linkType;
+                linkType +
+                "|" +
+                lagSeconds;
         }
 
         // =========================================================
@@ -5456,6 +5491,32 @@ namespace ProjectHub.AddIn.Services
                 schedule.Buckets.Entities[0].Id;
         }
 
+        private static int ConvertDependencyLagToSeconds(
+            object lag)
+        {
+            if (lag == null)
+                return 0;
+
+            try
+            {
+                double minutes =
+                    Convert.ToDouble(
+                        lag,
+                        CultureInfo.InvariantCulture);
+
+                return
+                    Convert.ToInt32(
+                        Math.Round(
+                            minutes * 60.0,
+                            0,
+                            MidpointRounding.AwayFromZero));
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         private static int ConvertLinkType(
             MSProject.PjTaskLinkType type)
         {
@@ -5885,6 +5946,8 @@ namespace ProjectHub.AddIn.Services
 
             public int LinkType { get; set; }
 
+            public int LagSeconds { get; set; }
+
             public string Key
             {
                 get
@@ -5894,7 +5957,9 @@ namespace ProjectHub.AddIn.Services
                         "|" +
                         SuccessorId +
                         "|" +
-                        LinkType;
+                        LinkType +
+                        "|" +
+                        LagSeconds;
                 }
             }
         }
